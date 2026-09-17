@@ -5,9 +5,6 @@ Project 1
 
 (Due: Sept 20, 2026)
 
-The project will be done in pairs. By Sept 14, please make sure that you have a partner to work
-with. If not, please send me a message.
-
 Two fundamental uninformed search techniques are Depth-first-search (DFS) and Breadth-first-search
 (BFS). In this project, you will be implementing the tree search versions of basic uninformed search
 algorithms. We have seen that BFS is guaranteed to terminate (if the state-space graph is finite) and find
@@ -92,6 +89,10 @@ The report (3) should be done without any support by the AI assistant.
 Developer Notes:
 
 Before beginning development on a feature, pull the latest changes from the remote repository to ensure your local branch is up to date.
+
 Before pushing your changes, pull from the remote repository again and resolve any conflicts locally before pushing.
+
 Before pushing your changes, test them locally and ensure correct functionality. 
+
+Work on one feature at a time.
 
