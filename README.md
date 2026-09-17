@@ -88,3 +88,10 @@ complexity presented in class and what is observed in your implementation. Inclu
 test case for each of BFS, DLS and IDS.
 
 The report (3) should be done without any support by the AI assistant.
+
+Developer Notes:
+
+Before beginning development on a feature, pull the latest changes from the remote repository to ensure your local branch is up to date.
+Before pushing your changes, pull from the remote repository again and resolve any conflicts locally before pushing.
+Before pushing your changes, test them locally and ensure correct functionality. 
+
