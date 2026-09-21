@@ -12,24 +12,13 @@ using namespace std;
 
 using Board = vector<vector<int>>;
 
-struct Node
-{
+struct Node {
     Board state;
-
-    // Depth of this node in the search tree.
-    // The start/root node is at depth 0.
     int depth;
-
-    // Sequence of moves used to reach this node.
-    // Example: "ULDR"
     string moves;
-
-    // Current location of the blank tile (0).
     int blankRow;
     int blankCol;
 
-    // Location of the blank tile in the parent state.
-    //
     // This allows us to prevent immediately returning to the
     // parent when generating successors.
     //
@@ -37,18 +26,8 @@ struct Node
     int parentBlankRow;
     int parentBlankCol;
 
-    // Default constructor.
-    Node()
-        : depth(0),
-          moves(""),
-          blankRow(-1),
-          blankCol(-1),
-          parentBlankRow(-1),
-          parentBlankCol(-1)
-    {
-    }
+    Node() : depth(0), moves(""), blankRow(-1), blankCol(-1), parentBlankRow(-1), parentBlankCol(-1) {}
 
-    // Constructor for creating a node from a board.
     Node(const Board& board,
          int nodeDepth,
          const string& moveSequence,
@@ -63,13 +42,10 @@ struct Node
           blankCol(col),
           parentBlankRow(parentRow),
           parentBlankCol(parentCol)
-    {
-    }
+          {}
 };
 
-// Structure returned by each search algorithm.
-struct SearchResult
-{
+struct SearchResult {
     bool solutionFound = false;
     int numberOfMoves = 0;
     string moveSequence = "";
@@ -78,21 +54,14 @@ struct SearchResult
     double cpuTime = 0.0;
 };
 
-// ------------------------------------------------------------
-// Function prototypes
-// ------------------------------------------------------------
-
-// Input / output helper functions
 Board readBoard(const string& prompt);
 void printBoard(const Board& board);
 void printResult(const string& algorithmName, const SearchResult& result);
 
-// Node helper functions.
 Node createRootNode(const Board& board);
 bool findBlank(const Board& board, int& row, int& col);
 vector<Node> generateSuccessors(const Node& node);
 
-// Search algorithm stubs
 SearchResult BFS(const Board& start, const Board& goal);
 SearchResult DLS(const Board& start, const Board& goal, int depthLimit);
 SearchResult IDS(const Board& start, const Board& goal);
@@ -125,7 +94,6 @@ int main()
     cout << "\nGoal state:\n";
     printBoard(goal);
 
-    // Algorithm menu.
     cout << "\n=============================================\n";
     cout << "Choose an algorithm:\n";
     cout << "1. BFS\n";
@@ -140,8 +108,7 @@ int main()
 
     cout << '\n';
 
-    switch (choice)
-    {
+    switch (choice) {
         case 1:
         {
             SearchResult result = BFS(start, goal);
@@ -194,12 +161,7 @@ int main()
     return 0;
 }
 
-// ------------------------------------------------------------
-// Input / output helper functions
-// ------------------------------------------------------------
-
-Board readBoard(const string& prompt)
-{
+Board readBoard(const string& prompt) {
     cout << prompt;
 
     Board board(4, vector<int>(4));
@@ -215,15 +177,10 @@ Board readBoard(const string& prompt)
 
     char ch;
 
-    for (int row = 0; row < 4; ++row)
-    {
-        for (int col = 0; col < 4; ++col)
-        {
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
             // Ignore everything until the next digit or minus sign.
-            while (cin.peek() != EOF &&
-                   !isdigit(cin.peek()) &&
-                   cin.peek() != '-')
-            {
+            while (cin.peek() != EOF && !isdigit(cin.peek()) && cin.peek() != '-') {
                 cin.get(ch);
             }
 
@@ -237,14 +194,11 @@ Board readBoard(const string& prompt)
     return board;
 }
 
-void printBoard(const Board& board)
-{
-    for (const auto& row : board)
-    {
+void printBoard(const Board& board) {
+    for (const auto& row : board) {
         cout << "[ ";
 
-        for (int value : row)
-        {
+        for (int value : row) {
             cout << value << '\t';
         }
 
@@ -252,52 +206,32 @@ void printBoard(const Board& board)
     }
 }
 
-void printResult(const string& algorithmName, const SearchResult& result)
-{
+void printResult(const string& algorithmName, const SearchResult& result) {
     cout << "=============================================\n";
     cout << algorithmName << " Results\n";
     cout << "=============================================\n";
 
-    if (result.solutionFound)
-    {
+    if (result.solutionFound) {
         cout << "The solution found.\n";
-        cout << "The number of moves: "
-             << result.numberOfMoves << '\n';
+        cout << "The number of moves: " << result.numberOfMoves << '\n';
 
-        cout << "The sequence of moves: "
-             << result.moveSequence << '\n';
-    }
-    else
-    {
+        cout << "The sequence of moves: " << result.moveSequence << '\n';
+    } else {
         cout << "The solution was not found.\n";
         cout << "The number of moves: 0\n";
         cout << "The sequence of moves: N/A\n";
     }
 
-    cout << "The number of states removed: "
-         << result.statesRemoved << '\n';
-
-    cout << "The maximum size of the queue (stack): "
-         << result.maxFrontierSize << '\n';
-
-    cout << "CPU time: "
-         << result.cpuTime << " seconds\n";
-
+    cout << "The number of states removed: " << result.statesRemoved << '\n';
+    cout << "The maximum size of the queue (stack): " << result.maxFrontierSize << '\n';
+    cout << "CPU time: " << result.cpuTime << " seconds\n";
     cout << "=============================================\n";
 }
 
-// ------------------------------------------------------------
-// Node helper functions
-// ------------------------------------------------------------
-
-bool findBlank(const Board& board, int& row, int& col)
-{
-    for (int r = 0; r < 4; ++r)
-    {
-        for (int c = 0; c < 4; ++c)
-        {
-            if (board[r][c] == 0)
-            {
+bool findBlank(const Board& board, int& row, int& col) {
+    for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            if (board[r][c] == 0) {
                 row = r;
                 col = c;
                 return true;
@@ -311,8 +245,7 @@ bool findBlank(const Board& board, int& row, int& col)
     return false;
 }
 
-Node createRootNode(const Board& board)
-{
+Node createRootNode(const Board& board) {
     int blankRow;
     int blankCol;
 
@@ -329,50 +262,32 @@ Node createRootNode(const Board& board)
     );
 }
 
-vector<Node> generateSuccessors(const Node& node)
-{
+vector<Node> generateSuccessors(const Node& node) {
     vector<Node> successors;
 
-    // Move definitions:
-    // U = blank moves up
-    // D = blank moves down
-    // L = blank moves left
-    // R = blank moves right
     const int rowChange[4] = {-1, 1, 0, 0};
     const int colChange[4] = {0, 0, -1, 1};
     const char moveChar[4] = {'U', 'D', 'L', 'R'};
 
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         int newRow = node.blankRow + rowChange[i];
         int newCol = node.blankCol + colChange[i];
 
         // Skip moves that go outside the 4x4 board.
-        if (newRow < 0 || newRow >= 4 ||
-            newCol < 0 || newCol >= 4)
-        {
+        if (newRow < 0 || newRow >= 4 || newCol < 0 || newCol >= 4) {
             continue;
         }
 
         // Do not immediately return to the parent state.
-        //
-        // If the blank moves into the location it occupied
-        // in the parent node, that successor would simply
-        // recreate the parent.
-        if (newRow == node.parentBlankRow &&
-            newCol == node.parentBlankCol)
-        {
+
+        if (newRow == node.parentBlankRow && newCol == node.parentBlankCol) {
             continue;
         }
 
-        // Copy the current board.
         Board newState = node.state;
 
         // Slide the adjacent tile into the blank position.
-        swap(
-            newState[node.blankRow][node.blankCol],
-            newState[newRow][newCol]
-        );
+        swap(newState[node.blankRow][node.blankCol], newState[newRow][newCol]);
 
         // Create the child node.
         Node child(
@@ -391,12 +306,7 @@ vector<Node> generateSuccessors(const Node& node)
     return successors;
 }
 
-// ------------------------------------------------------------
-// Search algorithm stubs
-// ------------------------------------------------------------
-
-SearchResult BFS(const Board& start, const Board& goal)
-{
+SearchResult BFS(const Board& start, const Board& goal) {
     SearchResult result;
 
     // Start measuring CPU time.
@@ -423,32 +333,25 @@ SearchResult BFS(const Board& start, const Board& goal)
         ++result.statesRemoved;
 
         // Check whether this node is the goal.
-        if (current.state == goal)
-        {
+        if (current.state == goal) {
             result.solutionFound = true;
             result.numberOfMoves = current.depth;
             result.moveSequence = current.moves;
 
-            result.cpuTime =
-                static_cast<double>(clock() - startTime)
-                / CLOCKS_PER_SEC;
-
+            result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
             return result;
         }
 
         // Generate all legal successors.
-        vector<Node> successors =
-            generateSuccessors(current);
+        vector<Node> successors = generateSuccessors(current);
 
         // BFS inserts successors in U, D, L, R order.
-        for (const Node& child : successors)
-        {
+        for (const Node& child : successors) {
             frontier.push(child);
         }
 
         // Record the largest queue size seen so far.
-        if (frontier.size() > result.maxFrontierSize)
-        {
+        if (frontier.size() > result.maxFrontierSize) {
             result.maxFrontierSize = frontier.size();
         }
     }
@@ -457,18 +360,11 @@ SearchResult BFS(const Board& start, const Board& goal)
     result.solutionFound = false;
     result.numberOfMoves = 0;
     result.moveSequence = "";
-
-    result.cpuTime =
-        static_cast<double>(clock() - startTime)
-        / CLOCKS_PER_SEC;
-
+    result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
     return result;
 }
 
-SearchResult DLS(const Board& start,
-                 const Board& goal,
-                 int depthLimit)
-{
+SearchResult DLS(const Board& start, const Board& goal, int depthLimit) {
     SearchResult result;
 
     // Start measuring CPU time.
@@ -483,8 +379,7 @@ SearchResult DLS(const Board& start,
 
     result.maxFrontierSize = frontier.size();
 
-    while (!frontier.empty())
-    {
+    while (!frontier.empty()) {
         // Remove the node at the top of the stack.
         Node current = frontier.top();
         frontier.pop();
@@ -495,28 +390,21 @@ SearchResult DLS(const Board& start,
         // Check for the goal before checking the depth limit.
         // This is important because a goal at exactly depthLimit
         // should still be accepted.
-        if (current.state == goal)
-        {
+        if (current.state == goal) {
             result.solutionFound = true;
             result.numberOfMoves = current.depth;
             result.moveSequence = current.moves;
-
-            result.cpuTime =
-                static_cast<double>(clock() - startTime)
-                / CLOCKS_PER_SEC;
-
+            result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
             return result;
         }
 
         // If this node is already at the depth limit,
         // do not generate children.
-        if (current.depth >= depthLimit)
-        {
+        if (current.depth >= depthLimit) {
             continue;
         }
 
-        vector<Node> successors =
-            generateSuccessors(current);
+        vector<Node> successors = generateSuccessors(current);
 
         /*
             generateSuccessors() returns:
@@ -531,15 +419,11 @@ SearchResult DLS(const Board& start,
 
                 U, D, L, R
         */
-        for (auto it = successors.rbegin();
-             it != successors.rend();
-             ++it)
-        {
+        for (auto it = successors.rbegin(); it != successors.rend(); ++it) {
             frontier.push(*it);
         }
 
-        if (frontier.size() > result.maxFrontierSize)
-        {
+        if (frontier.size() > result.maxFrontierSize) {
             result.maxFrontierSize = frontier.size();
         }
     }
@@ -549,55 +433,34 @@ SearchResult DLS(const Board& start,
     result.numberOfMoves = 0;
     result.moveSequence = "";
 
-    result.cpuTime =
-        static_cast<double>(clock() - startTime)
-        / CLOCKS_PER_SEC;
-
+    result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
     return result;
 }
 
-SearchResult IDS(const Board& start, const Board& goal)
-{
+SearchResult IDS(const Board& start, const Board& goal) {
     SearchResult result;
-
-    // Measure the total CPU time for the entire IDS search,
-    // including all repeated DLS calls.
     clock_t startTime = clock();
-
     int depthLimit = 0;
 
-    while (true)
-    {
+    while (true) {
         // Perform a depth-limited search at the current limit.
-        SearchResult dlsResult =
-            DLS(start, goal, depthLimit);
+        SearchResult dlsResult = DLS(start, goal, depthLimit);
 
         // IDS must count all states removed during every
         // DLS iteration.
         result.statesRemoved += dlsResult.statesRemoved;
 
         // Keep the largest stack size reached by any DLS run.
-        if (dlsResult.maxFrontierSize >
-            result.maxFrontierSize)
-        {
-            result.maxFrontierSize =
-                dlsResult.maxFrontierSize;
+        if (dlsResult.maxFrontierSize > result.maxFrontierSize) {
+            result.maxFrontierSize = dlsResult.maxFrontierSize;
         }
 
         // If DLS found the goal, IDS is finished.
-        if (dlsResult.solutionFound)
-        {
+        if (dlsResult.solutionFound) {
             result.solutionFound = true;
-            result.numberOfMoves =
-                dlsResult.numberOfMoves;
-            result.moveSequence =
-                dlsResult.moveSequence;
-
-            result.cpuTime =
-                static_cast<double>(
-                    clock() - startTime
-                ) / CLOCKS_PER_SEC;
-
+            result.numberOfMoves = dlsResult.numberOfMoves;
+            result.moveSequence = dlsResult.moveSequence;
+            result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
             return result;
         }
 
