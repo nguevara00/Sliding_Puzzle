@@ -6,6 +6,7 @@
 #include <utility>
 #include <queue>
 #include <ctime>
+#include <stack>
 
 using namespace std;
 
@@ -464,11 +465,93 @@ SearchResult BFS(const Board& start, const Board& goal)
     return result;
 }
 
-SearchResult DLS(const Board& start, const Board& goal, int depthLimit)
+SearchResult DLS(const Board& start,
+                 const Board& goal,
+                 int depthLimit)
 {
-    // TODO: Implement Depth-Limited Search using an explicit stack.
-
     SearchResult result;
+
+    // Start measuring CPU time.
+    clock_t startTime = clock();
+
+    // DLS uses an explicit LIFO stack.
+    stack<Node> frontier;
+
+    // Create and push the root node.
+    Node root = createRootNode(start);
+    frontier.push(root);
+
+    result.maxFrontierSize = frontier.size();
+
+    while (!frontier.empty())
+    {
+        // Remove the node at the top of the stack.
+        Node current = frontier.top();
+        frontier.pop();
+
+        // Count every node removed from the stack.
+        ++result.statesRemoved;
+
+        // Check for the goal before checking the depth limit.
+        // This is important because a goal at exactly depthLimit
+        // should still be accepted.
+        if (current.state == goal)
+        {
+            result.solutionFound = true;
+            result.numberOfMoves = current.depth;
+            result.moveSequence = current.moves;
+
+            result.cpuTime =
+                static_cast<double>(clock() - startTime)
+                / CLOCKS_PER_SEC;
+
+            return result;
+        }
+
+        // If this node is already at the depth limit,
+        // do not generate children.
+        if (current.depth >= depthLimit)
+        {
+            continue;
+        }
+
+        vector<Node> successors =
+            generateSuccessors(current);
+
+        /*
+            generateSuccessors() returns:
+
+                U, D, L, R
+
+            Because a stack is LIFO, we push them in reverse:
+
+                R, L, D, U
+
+            so that they are actually VISITED in:
+
+                U, D, L, R
+        */
+        for (auto it = successors.rbegin();
+             it != successors.rend();
+             ++it)
+        {
+            frontier.push(*it);
+        }
+
+        if (frontier.size() > result.maxFrontierSize)
+        {
+            result.maxFrontierSize = frontier.size();
+        }
+    }
+
+    // Stack became empty without finding the goal.
+    result.solutionFound = false;
+    result.numberOfMoves = 0;
+    result.moveSequence = "";
+
+    result.cpuTime =
+        static_cast<double>(clock() - startTime)
+        / CLOCKS_PER_SEC;
 
     return result;
 }
