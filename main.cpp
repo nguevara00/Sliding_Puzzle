@@ -1,3 +1,4 @@
+#include <cctype>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -5,12 +6,62 @@
 
 using namespace std;
 
-// ------------------------------------------------------------
-// Data structures
-// ------------------------------------------------------------
-
-// Represents a 4x4 sliding puzzle board.
 using Board = vector<vector<int>>;
+
+struct Node
+{
+    Board state;
+
+    // Depth of this node in the search tree.
+    // The start/root node is at depth 0.
+    int depth;
+
+    // Sequence of moves used to reach this node.
+    // Example: "ULDR"
+    string moves;
+
+    // Current location of the blank tile (0).
+    int blankRow;
+    int blankCol;
+
+    // Location of the blank tile in the parent state.
+    //
+    // This allows us to prevent immediately returning to the
+    // parent when generating successors.
+    //
+    // For the root node, both values are -1.
+    int parentBlankRow;
+    int parentBlankCol;
+
+    // Default constructor.
+    Node()
+        : depth(0),
+          moves(""),
+          blankRow(-1),
+          blankCol(-1),
+          parentBlankRow(-1),
+          parentBlankCol(-1)
+    {
+    }
+
+    // Constructor for creating a node from a board.
+    Node(const Board& board,
+         int nodeDepth,
+         const string& moveSequence,
+         int row,
+         int col,
+         int parentRow = -1,
+         int parentCol = -1)
+        : state(board),
+          depth(nodeDepth),
+          moves(moveSequence),
+          blankRow(row),
+          blankCol(col),
+          parentBlankRow(parentRow),
+          parentBlankCol(parentCol)
+    {
+    }
+};
 
 // Structure returned by each search algorithm.
 struct SearchResult
@@ -31,6 +82,10 @@ struct SearchResult
 Board readBoard(const string& prompt);
 void printBoard(const Board& board);
 void printResult(const string& algorithmName, const SearchResult& result);
+
+// Node helper functions.
+Node createRootNode(const Board& board);
+bool findBlank(const Board& board, int& row, int& col);
 
 // Search algorithm stubs
 SearchResult BFS(const Board& start, const Board& goal);
@@ -224,6 +279,49 @@ void printResult(const string& algorithmName, const SearchResult& result)
          << result.cpuTime << " seconds\n";
 
     cout << "=============================================\n";
+}
+
+// ------------------------------------------------------------
+// Node helper functions
+// ------------------------------------------------------------
+
+bool findBlank(const Board& board, int& row, int& col)
+{
+    for (int r = 0; r < 4; ++r)
+    {
+        for (int c = 0; c < 4; ++c)
+        {
+            if (board[r][c] == 0)
+            {
+                row = r;
+                col = c;
+                return true;
+            }
+        }
+    }
+
+    row = -1;
+    col = -1;
+
+    return false;
+}
+
+Node createRootNode(const Board& board)
+{
+    int blankRow;
+    int blankCol;
+
+    findBlank(board, blankRow, blankCol);
+
+    return Node(
+        board,       // puzzle state
+        0,           // root depth
+        "",          // no moves yet
+        blankRow,
+        blankCol,
+        -1,          // root has no parent
+        -1
+    );
 }
 
 // ------------------------------------------------------------
