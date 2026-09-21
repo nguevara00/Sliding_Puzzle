@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 #include <limits>
+#include <utility>
+#include <queue>
+#include <ctime>
 
 using namespace std;
 
@@ -86,6 +89,7 @@ void printResult(const string& algorithmName, const SearchResult& result);
 // Node helper functions.
 Node createRootNode(const Board& board);
 bool findBlank(const Board& board, int& row, int& col);
+vector<Node> generateSuccessors(const Node& node);
 
 // Search algorithm stubs
 SearchResult BFS(const Board& start, const Board& goal);
@@ -324,15 +328,138 @@ Node createRootNode(const Board& board)
     );
 }
 
+vector<Node> generateSuccessors(const Node& node)
+{
+    vector<Node> successors;
+
+    // Move definitions:
+    // U = blank moves up
+    // D = blank moves down
+    // L = blank moves left
+    // R = blank moves right
+    const int rowChange[4] = {-1, 1, 0, 0};
+    const int colChange[4] = {0, 0, -1, 1};
+    const char moveChar[4] = {'U', 'D', 'L', 'R'};
+
+    for (int i = 0; i < 4; ++i)
+    {
+        int newRow = node.blankRow + rowChange[i];
+        int newCol = node.blankCol + colChange[i];
+
+        // Skip moves that go outside the 4x4 board.
+        if (newRow < 0 || newRow >= 4 ||
+            newCol < 0 || newCol >= 4)
+        {
+            continue;
+        }
+
+        // Do not immediately return to the parent state.
+        //
+        // If the blank moves into the location it occupied
+        // in the parent node, that successor would simply
+        // recreate the parent.
+        if (newRow == node.parentBlankRow &&
+            newCol == node.parentBlankCol)
+        {
+            continue;
+        }
+
+        // Copy the current board.
+        Board newState = node.state;
+
+        // Slide the adjacent tile into the blank position.
+        swap(
+            newState[node.blankRow][node.blankCol],
+            newState[newRow][newCol]
+        );
+
+        // Create the child node.
+        Node child(
+            newState,
+            node.depth + 1,
+            node.moves + moveChar[i],
+            newRow,
+            newCol,
+            node.blankRow,
+            node.blankCol
+        );
+
+        successors.push_back(child);
+    }
+
+    return successors;
+}
+
 // ------------------------------------------------------------
 // Search algorithm stubs
 // ------------------------------------------------------------
 
 SearchResult BFS(const Board& start, const Board& goal)
 {
-    // TODO: Implement Breadth-First Search using an explicit queue.
-
     SearchResult result;
+
+    // Start measuring CPU time.
+    clock_t startTime = clock();
+
+    // BFS uses an explicit FIFO queue.
+    queue<Node> frontier;
+
+    // Create and enqueue the root node.
+    Node root = createRootNode(start);
+    frontier.push(root);
+
+    // The queue initially contains the root.
+    result.maxFrontierSize = frontier.size();
+
+    while (!frontier.empty())
+    {
+        // Remove the node at the front of the queue.
+        Node current = frontier.front();
+        frontier.pop();
+
+        // A state counts as removed when it is taken
+        // out of the queue.
+        ++result.statesRemoved;
+
+        // Check whether this node is the goal.
+        if (current.state == goal)
+        {
+            result.solutionFound = true;
+            result.numberOfMoves = current.depth;
+            result.moveSequence = current.moves;
+
+            result.cpuTime =
+                static_cast<double>(clock() - startTime)
+                / CLOCKS_PER_SEC;
+
+            return result;
+        }
+
+        // Generate all legal successors.
+        vector<Node> successors =
+            generateSuccessors(current);
+
+        // BFS inserts successors in U, D, L, R order.
+        for (const Node& child : successors)
+        {
+            frontier.push(child);
+        }
+
+        // Record the largest queue size seen so far.
+        if (frontier.size() > result.maxFrontierSize)
+        {
+            result.maxFrontierSize = frontier.size();
+        }
+    }
+
+    // Queue became empty, so no solution was found.
+    result.solutionFound = false;
+    result.numberOfMoves = 0;
+    result.moveSequence = "";
+
+    result.cpuTime =
+        static_cast<double>(clock() - startTime)
+        / CLOCKS_PER_SEC;
 
     return result;
 }
