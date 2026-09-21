@@ -558,12 +558,51 @@ SearchResult DLS(const Board& start,
 
 SearchResult IDS(const Board& start, const Board& goal)
 {
-    // TODO: Implement Iterative Deepening Search.
-    //
-    // IDS will repeatedly perform DLS with depth limits:
-    // 0, 1, 2, 3, ... until a solution is found.
-
     SearchResult result;
 
-    return result;
+    // Measure the total CPU time for the entire IDS search,
+    // including all repeated DLS calls.
+    clock_t startTime = clock();
+
+    int depthLimit = 0;
+
+    while (true)
+    {
+        // Perform a depth-limited search at the current limit.
+        SearchResult dlsResult =
+            DLS(start, goal, depthLimit);
+
+        // IDS must count all states removed during every
+        // DLS iteration.
+        result.statesRemoved += dlsResult.statesRemoved;
+
+        // Keep the largest stack size reached by any DLS run.
+        if (dlsResult.maxFrontierSize >
+            result.maxFrontierSize)
+        {
+            result.maxFrontierSize =
+                dlsResult.maxFrontierSize;
+        }
+
+        // If DLS found the goal, IDS is finished.
+        if (dlsResult.solutionFound)
+        {
+            result.solutionFound = true;
+            result.numberOfMoves =
+                dlsResult.numberOfMoves;
+            result.moveSequence =
+                dlsResult.moveSequence;
+
+            result.cpuTime =
+                static_cast<double>(
+                    clock() - startTime
+                ) / CLOCKS_PER_SEC;
+
+            return result;
+        }
+
+        // No solution at this depth.
+        // Try the next depth limit.
+        ++depthLimit;
+    }
 }
