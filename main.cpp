@@ -8,6 +8,13 @@
 #include <ctime>
 #include <stack>
 
+// new includes for phase 2
+#include <set>
+#include <map>
+#include <cstdlib>
+#include <unordered_map> //for lookup table
+#include <algorithm> //provides max()
+
 using namespace std;
 
 using Board = vector<vector<int>>;
@@ -54,6 +61,34 @@ struct SearchResult {
     double cpuTime = 0.0;
 };
 
+//nodes to go in the priority queue
+struct AStarEntry {
+    Node node;
+    int f;
+    long long insertionOrder;
+};
+
+//compares two nodes in the priority queue and sorts first by f, next by alphabetical
+struct AStarEntryCompare {
+    bool operator()(const AStarEntry& a, const AStarEntry& b) const {
+        if (a.f != b.f) {
+            return a.f < b.f;
+        }
+        return a.insertionOrder < b.insertionOrder;
+    }
+};
+
+// The ordered set supports both removal of the minimum-f node and
+// updating an existing Open entry when Improve finds a better path.
+struct AStarData {
+    using OpenSet = set<AStarEntry, AStarEntryCompare>;
+    OpenSet open;
+    map<Board, OpenSet::iterator> openPositions;
+    set<Board> closed;
+    map<Board, int> bestG;
+    long long nextInsertionOrder = 0;
+};
+
 Board readBoard(const string& prompt);
 void printBoard(const Board& board);
 void printResult(const string& algorithmName, const SearchResult& result);
@@ -65,6 +100,30 @@ vector<Node> generateSuccessors(const Node& node);
 SearchResult BFS(const Board& start, const Board& goal);
 SearchResult DLS(const Board& start, const Board& goal, int depthLimit);
 SearchResult IDS(const Board& start, const Board& goal);
+
+//new functions for phase 2
+
+int manhattanDistance(const Board& state, const Board& goal); //function to calculate heuristic 1
+void insertIntoOpen(AStarData& data, const Node& node, int f);
+
+void Improve(const Node& u, const Node& v, const Board& goal, AStarData& data, int choice, const unordered_map<string, int>& table);
+
+SearchResult AStar(const Board& start, const Board& goal, int choice, const unordered_map<string, int>& table);
+
+Board colorBoard(const Board& board);
+string colorBoardKey(const Board& board);
+
+void DLSForTable(const Board& mappedGoal, int depthLimit,
+                 unordered_map<string, int>& table);
+
+void IDSForTable(const Board& goal,
+                 unordered_map<string, int>& table);
+
+int heuristic2Distance(const Board& state,
+                       const unordered_map<string, int>& table);
+
+int heuristicValue(const Board& state, const Board& goal,
+                   int choice, const unordered_map<string, int>& table);
 
 // ------------------------------------------------------------
 // Main
@@ -100,6 +159,9 @@ int main()
     cout << "2. IDS\n";
     cout << "3. BFS and IDS\n";
     cout << "4. DLS\n";
+    cout << "5. A* (Heuristic 1: Manhattan distance)\n";
+    cout << "6. A* (Heuristic 2: R/G lookup table)\n";
+    cout << "7. A* (Heuristic 3: Maximum of h1 and h2)\n";
     cout << "=============================================\n";
     cout << "Selection: ";
 
@@ -107,6 +169,8 @@ int main()
     cin >> choice;
 
     cout << '\n';
+
+    unordered_map<string,int> heuristicTable;
 
     switch (choice) {
         case 1:
@@ -152,6 +216,34 @@ int main()
             printResult("DLS", result);
             break;
         }
+
+        case 5:
+        {
+            // Heuristic 1.  Passing a function lets the same A* algorithm
+            // use Heuristic 2 or 3 in a later implementation step.
+            
+            SearchResult result = AStar(start, goal, 1, heuristicTable);
+            printResult("A* (Manhattan distance)", result);
+            break;
+        }
+
+        case 6:
+        {
+            //H2
+            IDSForTable(goal, heuristicTable);
+            SearchResult result = AStar(start, goal, 2, heuristicTable);
+            printResult("A* (Red/Green heuristic)", result);
+            break;
+        }
+
+        case 7:
+        {
+            IDSForTable(goal, heuristicTable);
+
+            SearchResult result = AStar(start, goal, 3, heuristicTable);
+            printResult("A* (Maximum of H1 and H2)", result);
+            break;
+        }    
 
         default:
             cout << "Invalid algorithm selection.\n";
@@ -304,6 +396,226 @@ vector<Node> generateSuccessors(const Node& node) {
     }
 
     return successors;
+}
+
+// ------------------------------------------------------------
+// Heuristic 1: Sum of Manhattan distances of nonblank tiles
+// from their positions in the user-supplied goal board.
+// ------------------------------------------------------------
+int manhattanDistance(const Board& state, const Board& goal) {
+    int totalDistance = 0;
+
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            int tile = state[row][col];
+            if (tile == 0) {
+                continue; // The blank tile contributes no distance.
+            }
+
+            // Find this tile in the goal board.
+            for (int goalRow = 0; goalRow < 4; ++goalRow) {
+                for (int goalCol = 0; goalCol < 4; ++goalCol) {
+                    if (goal[goalRow][goalCol] == tile) {
+                        totalDistance += abs(row - goalRow) + abs(col - goalCol);
+                    }
+                }
+            }
+        }
+    }
+
+    return totalDistance;
+}
+
+// Put a new or improved entry into A*'s Open set.
+void insertIntoOpen(AStarData& data, const Node& node, int f) {
+    AStarEntry entry{node, f, data.nextInsertionOrder++};
+    auto inserted = data.open.insert(entry);
+    data.openPositions[node.state] = inserted.first;
+}
+
+// ------------------------------------------------------------
+// Improve(u, v): w(u, v) = 1 move for the sliding tile puzzle.
+// The generated Node v already stores parent information in
+// its moves string and parentBlankRow / parentBlankCol fields.
+// ------------------------------------------------------------
+void Improve(const Node& u, const Node& v, const Board& goal, int choice,  const unordered_map<string, int>& table, AStarData& data) {
+    int tentativeG = u.depth + 1;
+    auto openEntry = data.openPositions.find(v.state);
+
+    if (openEntry != data.openPositions.end()) {
+        // v is already in Open.
+        if (tentativeG < data.bestG[v.state]) {
+            // Remove its old f value, then reinsert with the improved path.
+            data.open.erase(openEntry->second);
+            data.openPositions.erase(openEntry);
+            data.bestG[v.state] = tentativeG;
+            insertIntoOpen(data, v, tentativeG + heuristicValue(v.state, goal, choice, table));
+        }
+    }
+    else if (data.closed.count(v.state) != 0) {
+        // v was expanded earlier; reopen it only if the path is shorter.
+        if (tentativeG < data.bestG[v.state]) {
+            data.closed.erase(v.state);
+            data.bestG[v.state] = tentativeG;
+            insertIntoOpen(data, v, tentativeG + heuristicValue(v.state, goal, choice, table));
+        }
+    }
+    else {
+        // v has never been discovered.
+        data.bestG[v.state] = tentativeG;
+        insertIntoOpen(data, v, tentativeG + heuristicValue(v.state, goal, choice, table));
+    }
+}
+
+// ------------------------------------------------------------
+// A* best-first search.  Open has exactly one active entry per
+// board state, and Closed contains expanded board states.
+// ------------------------------------------------------------
+SearchResult AStar(const Board& start, const Board& goal, int choice, const unordered_map<string, int>& table) {
+    SearchResult result;
+    clock_t startTime = clock();
+    AStarData data;
+
+    Node root = createRootNode(start);
+    data.bestG[root.state] = 0;
+
+    insertIntoOpen(data, root, heuristicValue(root.state, goal, choice, table));
+    result.maxFrontierSize = data.open.size();
+
+    while (!data.open.empty()) {
+        // Remove the minimum-f node from Open and insert it into Closed.
+        auto first = data.open.begin();
+        Node current = first->node;
+
+        data.openPositions.erase(current.state);
+        data.open.erase(first);
+        data.closed.insert(current.state);
+
+        ++result.statesRemoved;
+
+        if (current.state == goal) {
+            result.solutionFound = true;
+            result.numberOfMoves = current.depth;
+            result.moveSequence = current.moves;
+            result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
+            return result;
+        }
+
+        // Reuse the existing U, D, L, R successor generation function.
+        vector<Node> successors = generateSuccessors(current);
+
+        for (const Node& child : successors) {
+            Improve(current, child, goal, choice, table, data);
+        }
+
+        if (data.open.size() > result.maxFrontierSize) {
+            result.maxFrontierSize = data.open.size();
+        }
+    }
+
+    result.cpuTime = static_cast<double>(clock() - startTime) / CLOCKS_PER_SEC;
+    return result;
+}
+
+
+Board colorBoard(const Board& board) {
+    Board colored = board;
+
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            if (colored[row][col] >= 1 && colored[row][col] <= 8) {
+                colored[row][col] = 1;
+            }
+            else if (colored[row][col] >= 9 && colored[row][col] <= 15) {
+                colored[row][col] = 2;
+            }
+        }
+    }
+
+    return colored;
+}
+
+string colorBoardKey(const Board& board) {
+    string key;
+
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            key += char('0' + board[row][col]);
+        }
+    }
+
+    return key;
+}
+
+void DLSForTable(const Board& mappedGoal, int depthLimit,
+                 unordered_map<string, int>& table) {
+    stack<Node> frontier;
+    unordered_map<string, int> visitedDepth;
+
+    frontier.push(createRootNode(mappedGoal));
+
+    while (!frontier.empty()) {
+        Node current = frontier.top();
+        frontier.pop();
+
+        string key = colorBoardKey(current.state);
+        auto visited = visitedDepth.find(key);
+
+        if (visited != visitedDepth.end() &&
+            visited->second <= current.depth) {
+            continue;
+        }
+
+        visitedDepth[key] = current.depth;
+
+        if (table.find(key) == table.end()) {
+            table[key] = current.depth;
+        }
+
+        if (current.depth >= depthLimit) {
+            continue;
+        }
+
+        vector<Node> successors = generateSuccessors(current);
+
+        for (auto it = successors.rbegin();
+             it != successors.rend(); ++it) {
+            frontier.push(*it);
+        }
+    }
+}
+
+void IDSForTable(const Board& goal,
+                 unordered_map<string, int>& table) {
+    Board mappedGoal = colorBoard(goal);
+    table.clear();
+
+    int depthLimit = 0;
+
+    while (table.size() < 102960) {
+        DLSForTable(mappedGoal, depthLimit, table);
+        ++depthLimit;
+    }
+}
+
+int heuristic2Distance(const Board& state,
+                       const unordered_map<string, int>& table) {
+    return table.at(colorBoardKey(colorBoard(state)));
+}
+
+int heuristicValue(const Board& state, const Board& goal, int choice, const unordered_map<string, int>& table) {
+    if (choice == 1) {
+        return manhattanDistance(state, goal);
+    }
+
+    if (choice == 2) {
+        return heuristic2Distance(state,table);
+    }
+
+    int h1 = manhattanDistance(state,goal);
+    int h2 = heuristic2Distance(state,table);
+
+    return max(h1,h2);
 }
 
 SearchResult BFS(const Board& start, const Board& goal) {
