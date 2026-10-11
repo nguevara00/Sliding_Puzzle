@@ -106,7 +106,7 @@ SearchResult IDS(const Board& start, const Board& goal);
 int manhattanDistance(const Board& state, const Board& goal); //function to calculate heuristic 1
 void insertIntoOpen(AStarData& data, const Node& node, int f);
 
-void Improve(const Node& u, const Node& v, const Board& goal, AStarData& data, int choice, const unordered_map<string, int>& table);
+void Improve(const Node& u, const Node& v, const Board& goal, AStarData& data, int choice, const unordered_map<string, int>& table, AStarData& data);
 
 SearchResult AStar(const Board& start, const Board& goal, int choice, const unordered_map<string, int>& table);
 
@@ -153,101 +153,77 @@ int main()
     cout << "\nGoal state:\n";
     printBoard(goal);
 
-    cout << "\n=============================================\n";
-    cout << "Choose an algorithm:\n";
-    cout << "1. BFS\n";
-    cout << "2. IDS\n";
-    cout << "3. BFS and IDS\n";
-    cout << "4. DLS\n";
-    cout << "5. A* (Heuristic 1: Manhattan distance)\n";
-    cout << "6. A* (Heuristic 2: R/G lookup table)\n";
-    cout << "7. A* (Heuristic 3: Maximum of h1 and h2)\n";
-    cout << "=============================================\n";
-    cout << "Selection: ";
+    unordered_map<string, int> heuristicTable;
+    bool tableBuilt = false;
 
-    int choice;
-    cin >> choice;
+    string selection;
 
-    cout << '\n';
+    while (true) {
+        cout << "\n=============================================\n";
+        cout << "Choose an algorithm:\n";
+        cout << "1. Best First Search - h1(s)\n";
+        cout << "2. Best First Search - h2(s)\n";
+        cout << "3. Best First Search - h3(s)\n";
+        cout << "4. Halt\n";
+        cout << "=============================================\n";
+        cout << "Selection: ";
 
-    unordered_map<string,int> heuristicTable;
-
-    switch (choice) {
-        case 1:
-        {
-            SearchResult result = BFS(start, goal);
-            printResult("BFS", result);
-            break;
+        if (!(cin >> selection)){
+            return 0;
         }
 
-        case 2:
-        {
-            SearchResult result = IDS(start, goal);
-            printResult("IDS", result);
+        if (selection == "4"){
             break;
         }
+        
+        bool selected[4] = {false,false,false,false};
+        bool valid = true;
 
-        case 3:
-        {
-            SearchResult bfsResult = BFS(start, goal);
-            printResult("BFS", bfsResult);
-
-            cout << '\n';
-
-            SearchResult idsResult = IDS(start, goal);
-            printResult("IDS", idsResult);
-            break;
-        }
-
-        case 4:
-        {
-            int depthLimit;
-
-            cout << "Enter the depth limit for DLS: ";
-            cin >> depthLimit;
-
-            while (depthLimit < 0)
-            {
-                cout << "Depth limit must be non-negative. Enter again: ";
-                cin >> depthLimit;
+        for (char digit : selection) {
+            if (digit < '1' || digit > '3') {
+                valid = false;
+                break;
             }
 
-            SearchResult result = DLS(start, goal, depthLimit);
-            printResult("DLS", result);
-            break;
+            int index = digit - '0';
+
+            if (selected[index]) {
+                valid = false;
+                break;
+            }
+
+            selected[index] = true;
         }
-
-        case 5:
-        {
-            // Heuristic 1.  Passing a function lets the same A* algorithm
-            // use Heuristic 2 or 3 in a later implementation step.
-            
-            SearchResult result = AStar(start, goal, 1, heuristicTable);
-            printResult("A* (Manhattan distance)", result);
-            break;
-        }
-
-        case 6:
-        {
-            //H2
-            IDSForTable(goal, heuristicTable);
-            SearchResult result = AStar(start, goal, 2, heuristicTable);
-            printResult("A* (Red/Green heuristic)", result);
-            break;
-        }
-
-        case 7:
-        {
-            IDSForTable(goal, heuristicTable);
-
-            SearchResult result = AStar(start, goal, 3, heuristicTable);
-            printResult("A* (Maximum of H1 and H2)", result);
-            break;
-        }    
-
-        default:
+        
+        if (!valid) {
             cout << "Invalid algorithm selection.\n";
-            return 1;
+            continue;
+        }
+
+         if ((selected[2] || selected[3]) && !tableBuilt) {
+            IDSForTable(goal, heuristicTable);
+            tableBuilt = true;
+        }
+
+        cout << '\n';
+
+        for (char digit : selection) {
+            int choice = digit - '0';
+
+            SearchResult result = AStar(start, goal, choice, heuristicTable);
+
+            if (choice == 1) {
+                printResult("Best First Search - Heuristic 1 (Manhattan distance)", result);
+            }
+            else if (choice == 2) {
+                printResult("Best First Search - Heuristic 2 (Red/Green heuristic)", result);
+            }
+            else {
+                printResult("Best First Search - Heuristic 3 (Maximum of H1 and H2)", result);
+            }
+
+            cout << '\n';
+        }
     }
 
     return 0;
@@ -379,7 +355,7 @@ vector<Node> generateSuccessors(const Node& node) {
         Board newState = node.state;
 
         // Slide the adjacent tile into the blank position.
-        swap(newState[node.blankRow][node.blankCol], newState[newRow][newCol]);
+        std::swap(newState[node.blankRow][node.blankCol], newState[newRow][newCol]);
 
         // Create the child node.
         Node child(
