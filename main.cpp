@@ -106,7 +106,7 @@ SearchResult IDS(const Board& start, const Board& goal);
 int manhattanDistance(const Board& state, const Board& goal); //function to calculate heuristic 1
 void insertIntoOpen(AStarData& data, const Node& node, int f);
 
-void Improve(const Node& u, const Node& v, const Board& goal, AStarData& data, int choice, const unordered_map<string, int>& table, AStarData& data);
+void Improve(const Node& u, const Node& v, const Board& goal, int choice, const unordered_map<string, int>& table, AStarData& data);
 
 SearchResult AStar(const Board& start, const Board& goal, int choice, const unordered_map<string, int>& table);
 
